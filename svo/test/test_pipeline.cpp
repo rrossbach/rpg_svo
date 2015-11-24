@@ -36,6 +36,7 @@ class BenchmarkNode
 {
   vk::AbstractCamera* cam_;
   svo::FrameHandlerMono* vo_;
+    cv::Mat* plot_;
 
 public:
   BenchmarkNode();
@@ -48,16 +49,24 @@ BenchmarkNode::BenchmarkNode()
   cam_ = new vk::PinholeCamera(752, 480, 315.5, 315.5, 376.0, 240.0);
   vo_ = new svo::FrameHandlerMono(cam_);
   vo_->start();
+  plot_ = new cv::Mat(500,500,CV_8UC3, cv::Scalar(0));
 }
 
 BenchmarkNode::~BenchmarkNode()
 {
   delete vo_;
   delete cam_;
+  delete plot_;
 }
 
 void BenchmarkNode::runFromFolder()
 {
+  cv::line(*plot_, cv::Point(250,0), cv::Point(250,500), cv::Scalar(255,0,255));
+  cv::line(*plot_, cv::Point(0,250), cv::Point(500,250), cv::Scalar(255, 0, 255));
+
+  cv::Point origin = cv::Point(250,250);
+  cv::Point prevPoint1 = origin, curPoint1 = origin;
+  cv::Point prevPoint2 = origin, curPoint2 = origin;
   for(int img_id = 2; img_id < 188; ++img_id)
   {
     // load image
@@ -80,6 +89,26 @@ void BenchmarkNode::runFromFolder()
                   << "Proc. Time: " << vo_->lastProcessingTime()*1000 << "ms \n";
 
     	// access the pose of the camera via vo_->lastFrame()->T_f_w_.
+        Vector3d pos = vo_->lastFrame()->T_f_w_.translation();
+
+        std::cout << "\tvo_->lastFrame()->pos() XPos: " << vo_->lastFrame()->pos().x() << " \t"
+                << "YPos: " << vo_->lastFrame()->pos().y() << " \t"
+                << "ZPos: " << vo_->lastFrame()->pos().z() << "\n";
+        std::cout << "\tlastFrame()->T_f_w.transation() XPos: " << pos.x() << " \t"
+                << "YPos: " << pos.y() << " \t"
+                << "ZPos: " << pos.z() << "\n";
+        curPoint2 = origin + cv::Point(pos.x() * 13, pos.y() * 13);
+        curPoint1 = origin + cv::Point(vo_->lastFrame()->pos().x() * 13, vo_->lastFrame()->pos().y() * 13);
+      cv::circle(*plot_, prevPoint1, 2, cv::Scalar(0,255,0));
+      cv::circle(*plot_, curPoint1, 2, cv::Scalar(0,255,0));
+      cv::circle(*plot_, prevPoint2, 2, cv::Scalar(0,0,255));
+      cv::circle(*plot_, curPoint2, 2, cv::Scalar(0,0,255));
+     // cv::line(*plot_, prevPoint1, curPoint1, cv::Scalar(0,255,0));
+     // cv::line(*plot_, prevPoint2, curPoint2, cv::Scalar(0,0,255));
+      prevPoint1 = curPoint1;
+      prevPoint2 = curPoint2;
+      cv::imshow("plot_", *plot_);
+      cv::waitKey(0);
     }
   }
 }
